@@ -1,0 +1,63 @@
+name: Run Puppeteer Script at Specific Times
+
+on:
+  schedule:
+    - cron: '0,15,30,45 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run-puppeteer-script:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
+    timeout-minutes: 10
+    env:
+      TZ: 'Asia/Ho_Chi_Minh'
+
+    steps:
+    - name: Check current time and timezone
+      run: |
+        echo "Current date and time on the runner:"
+        date
+        echo "Timezone info:"
+        timedatectl
+
+    - name: Log scheduled time
+      run: |
+        echo "Workflow started at: $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "Next runs scheduled for:"
+        echo "- $(date -d '15 min' '+%Y-%m-%d %H:%M:%S')"
+        echo "- $(date -d '30 min' '+%Y-%m-%d %H:%M:%S')"
+        echo "- $(date -d '45 min' '+%Y-%m-%d %H:%M:%S')"
+
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      run: |
+        npm install puppeteer googleapis
+
+    - name: Install Chromium
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y chromium-browser
+
+    - name: Clear Puppeteer Cache
+      run: |
+        rm -rf ~/.cache/puppeteer
+
+    - name: Run Puppeteer script
+      env:
+        GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+        GOOGLE_CREDENTIALS_VARIABLES: ${{ vars.GOOGLE_CREDENTIALS_JSON }}
+      run: |
+        echo "$GOOGLE_CREDENTIALS_JSON" > credentials.json
+        node index.js
